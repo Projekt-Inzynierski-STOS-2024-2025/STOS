@@ -3,8 +3,6 @@ from typing import override
 
 from manager.types import StosTaskResponse
 
-
-
 class IApiDriver(ABC):
 
     @staticmethod
