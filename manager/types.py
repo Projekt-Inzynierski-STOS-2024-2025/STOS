@@ -1,5 +1,8 @@
 from typing import Any, Self
 from enum import Enum
+from uuid import UUID
+
+
 
 # STOS Api responses
 class StosTaskResponse:
@@ -51,4 +54,10 @@ class TaskData:
         self.files = files
         
 
+class Worker:
+    status: str
+    worker_id: UUID
 
+    def __init__(self, status: str, worker_id: UUID ) -> None:
+        self.status = status
+        self.worker_id = worker_id
