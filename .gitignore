@@ -162,3 +162,4 @@ cython_debug/
 #.idea/
 
 stos_mock/data.txt
+.idea/
