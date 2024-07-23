@@ -1,0 +1,54 @@
+from typing import Any, Self
+from enum import Enum
+
+# STOS Api responses
+class StosTaskResponse:
+    student_id: str
+    task_id: str
+    files: list[str]
+
+    def __init__(self, student_id: str, task_id: str) -> None:
+        self.student_id = student_id
+        self.task_id = task_id
+        self.files = []
+
+    @staticmethod
+    def from_json(json_object: dict[str, Any]) -> Self:
+        student_id = json_object['student_id']
+        task_id = json_object['task_id']
+        res = StosTaskResponse(student_id, task_id)
+        res.files = json_object['files']
+        return res
+
+
+# Intra app communication
+
+# Enum representing type of descripted file
+class TaskFileType(Enum):
+    STUDENT_FILE = 1
+    TASK_FILE = 2
+    RESULT_FILE = 3
+    ADDITIONAL_INFO_FILE = 4
+
+# Object representing single file in context of Task
+class TaskFile:
+    file_id: str
+    disk_path: str
+    task_type: TaskFileType
+
+    def __init__(self, file_id: str, disk_path: str, task_type: TaskFileType) -> None:
+        self.file_id = file_id
+        self.disk_path = disk_path
+        self.task_type = task_type
+    
+# Object representing a single task, exchanged between schedulear and manager
+class TaskData:
+    files: list[TaskFile]
+    task_id: str
+
+    def __init__(self, task_id: str, files: list[TaskFile]) -> None:
+        self.task_id = task_id
+        self.files = files
+        
+
+
