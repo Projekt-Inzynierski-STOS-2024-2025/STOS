@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import os
 from typing import override
 
 class IStorageDriver(ABC):
@@ -17,12 +18,23 @@ class IStorageDriver(ABC):
 
 class LocalStorageDriver(IStorageDriver):
     
+    __SAVE_PATH = "/tmp/stos/"
+
     @staticmethod
     @override
     def save_file(id: str, content: str) -> str:
-        return f"/tmp/stos/{id}"
+        saved_path = LocalStorageDriver.__SAVE_PATH + id
+        with open(saved_path, "w") as file:
+            _ = file.write(content)
+        return saved_path
 
     @staticmethod
     @override
     def get_file(url: str) -> str | None:
-        return "file contents"
+        file_exists = os.path.isfile(url)
+        if not file_exists:
+            return None
+        with open(url, 'r') as file:
+            content = file.read()
+        return content
+
