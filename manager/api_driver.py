@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import override
 
-from types.stos_api import StosTaskResponse
+from manager.types import StosTaskResponse
 
 
 

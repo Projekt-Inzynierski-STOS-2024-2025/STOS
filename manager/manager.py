@@ -6,8 +6,7 @@ import os
 from manager.api_driver import IApiDriver, STOSApiDriver
 from manager.cache_driver import ICacheDriver, SQliteCacheDriver
 from manager.storage_driver import IStorageDriver, LocalStorageDriver
-from types.stos_api import StosTaskResponse
-from types.task import TaskData
+from manager.types import StosTaskResponse, TaskData
 
 
 class IManager(ABC):

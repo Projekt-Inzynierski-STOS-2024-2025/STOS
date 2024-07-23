@@ -2,32 +2,32 @@ from abc import ABC, abstractmethod
 from typing import override
 import sqlite3 as sqlite
 
-from types.task import TaskFile, TaskFileType
+from manager.types import TaskFile, TaskFileType
 
 
 class ICacheDriver(ABC):
 
     # Checks cache for existance of files and returns missing files
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def check_files(files: list[str]) -> list[str]:
         pass
 
-    # Adds entry regarding a single file to cache
-    @abstractmethod
+    # Adds entry regarding a single file to cache and overwrites old record
     @staticmethod
+    @abstractmethod
     def add_entry(file: str, path: str):
         pass
 
     # Deletes a record representing file
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def delete_entry(file: str):
         pass
 
     # Get file entry, returns None if file does not exist
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def get_entry(file: str) -> TaskFile | None:
         pass
 
@@ -36,7 +36,7 @@ class ICacheDriver(ABC):
 class SQliteCacheDriver(ICacheDriver):
 
     # Do not access directly, please use __get_connection()
-    __connection: sqlite.Connection | None
+    __connection: sqlite.Connection | None = None
 
     @override
     @staticmethod
@@ -53,6 +53,8 @@ class SQliteCacheDriver(ICacheDriver):
         sql_insertable = [file, path]
         command = """INSERT INTO files (fileId, filePath) VALUES(?, ?)"""
         conn = SQliteCacheDriver.__get_connection()
+        if SQliteCacheDriver.get_entry(file) is not None:
+            SQliteCacheDriver.delete_entry(file)
         cursor = conn.cursor()
         _ = cursor.execute(command, sql_insertable)
         conn.commit()
@@ -74,7 +76,7 @@ class SQliteCacheDriver(ICacheDriver):
         conn = SQliteCacheDriver.__get_connection()
         cursor = conn.cursor()
         _ = cursor.execute(command, [file])
-        res: tuple[str] = cursor.fetchone()
+        res: tuple[str] | None = cursor.fetchone()
         if res:
             return TaskFile(file, res[0], TaskFileType.STUDENT_FILE)
         else:
@@ -110,7 +112,7 @@ class SQliteCacheDriver(ICacheDriver):
                         )
                     """,
                     """
-                    CREATE UNIQUE INDEX idx_file_id
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_file_id
                     ON files (fileId)
                     """]
         cursor = conn.cursor()
