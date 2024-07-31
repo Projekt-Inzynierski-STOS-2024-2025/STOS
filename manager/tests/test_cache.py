@@ -2,16 +2,19 @@ import os
 import sqlite3 as sqlite
 
 from dotenv import load_dotenv
+
 from manager.cache_driver import SQliteCacheDriver
 import pytest
 
 @pytest.fixture(scope = 'session', autouse = True)
 def connection():
-    _ = load_dotenv()
-    connection = sqlite.connect("./cache.sqlite")
+    _ = load_dotenv("./testing.env")
+    print(os.environ.get("ENVIRONMENT"))
+    db_name = os.environ.get("TEST_DB", "test")+".db"
+    connection = sqlite.connect(db_name)
     yield connection
     connection.close()
-    os.remove("./cache.sqlite")
+    os.remove(db_name)
 
 
 def test_insert(connection):

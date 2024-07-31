@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from os import environ, stat
 from typing import override
 import sqlite3 as sqlite
 
@@ -92,13 +93,23 @@ class SQliteCacheDriver(ICacheDriver):
     @staticmethod
     def __initialize_sqlite_connection():
         try:
-            connection = sqlite.connect("./cache.sqlite")
+            db_name = SQliteCacheDriver.__get_database_name()
+            connection = sqlite.connect(db_name)
         except sqlite.Error as e:
             print(e)
             exit(-1)
         finally:
             SQliteCacheDriver.__connection = connection
             SQliteCacheDriver.__execute_startup_script()
+
+    @staticmethod
+    def __get_database_name():
+        env = environ.get("ENVIRONMENT", 'dev')
+        if env == "test":
+            return environ.get("TEST_DB", "test") + ".db"
+        else:
+            return environ.get("DB", "cache") + ".db"
+
 
     
     @staticmethod
