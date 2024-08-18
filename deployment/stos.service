@@ -1,0 +1,9 @@
+[Unit]
+Description=STOS daemon managing code execution container instances
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+User=app
+ExecStart=/home/stos/STOS/deployment/start-stos.sh

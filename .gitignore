@@ -163,3 +163,5 @@ cython_debug/
 
 stos_mock/data.txt
 .idea/
+
+.DS_Store
