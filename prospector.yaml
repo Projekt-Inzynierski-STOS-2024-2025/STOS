@@ -1,0 +1,11 @@
+strictness: high
+output-format: json
+test-warnings: true
+
+pylint:
+  disable:
+    - missing-docstring
+    - too-few-public-methods
+    - method-hidden
+    - access-member-before-definition
+    - import-error
