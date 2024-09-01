@@ -6,7 +6,9 @@ import queue
 from uuid import uuid4
 import subprocess
 import shutil
-from .scheduler_types import Worker, TaskData, TaskFile, TaskFileType
+from .scheduler_types import Worker
+from manager.types import TaskData, TaskFile, TaskFileType
+import os
 
 class IScheduler(ABC):
 
@@ -52,13 +54,13 @@ class Scheduler(IScheduler):
     __lock: threading.Lock
 
 
-    def __init__(self, initial_workers: int):
+    def __init__(self):
         self.__task_completion_callbacks = []
         self.__tasks_queue = queue.Queue()
         self.__workers_queue = queue.Queue()
         self.__workers_delta = 0
         self.__lock = threading.Lock()
-        self.init_workers(initial_workers)
+        self.init_workers(int(os.environ.get("NUMBER_OF_WORKERS", "3")))
         
 
     @override
@@ -84,7 +86,7 @@ class Scheduler(IScheduler):
     @override
     def run_container(self, taskData: TaskData, worker: Worker) -> None:
         print(f"Started mock container for task {taskData.task_id}")
-        worker_dir = Path(f"./worker_files/{worker.worker_id}") # move to env
+        worker_dir = Path(f"./worker_files/{worker.worker_id}")
         worker_dir.parent.mkdir(exist_ok=True)
         if worker_dir.exists():
             shutil.rmtree(worker_dir)
@@ -102,17 +104,16 @@ class Scheduler(IScheduler):
         check=True)
         print(f"Mock container for task {taskData.task_id} has completed work.")
         resultData: TaskData = TaskData(taskData.task_id, [])
-        output_dir = Path(f"./output/{taskData.task_id}") # move to env
+        output_dir = Path(f"./output/{taskData.task_id}")
         output_dir.parent.mkdir(exist_ok=True)
         output_dir.mkdir()
         for file_path in worker_dir.iterdir():
             if file_path.is_file():
                 shutil.copy(file_path, output_dir / file_path.name)
-                # Optionally, add copied files to resultData
-                resultData.files.append(TaskFile(str(uuid4()), str(output_dir / file_path.name), TaskFileType.RESULT_FILE))
+                resultData.files.append(TaskFile(str(uuid4()), str(worker_dir / file_path.name), TaskFileType.RESULT_FILE))
         print(f"Files copied to output folder.")
         for callback in self.__task_completion_callbacks:
-            callback(resultData)
+            callback(resultData, output_dir)
         with self.__lock:
             self.__workers_queue.put(worker)
         self.manage_workers()

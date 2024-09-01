@@ -1,7 +1,7 @@
-from typing import Any, Self
+from typing import Self
 from enum import Enum
 from uuid import UUID
-
+import json
 
 
 # STOS Api responses
@@ -16,11 +16,12 @@ class StosTaskResponse:
         self.files = []
 
     @staticmethod
-    def from_json(json_object: dict[str, Any]) -> Self:
-        student_id = json_object['student_id']
-        task_id = json_object['task_id']
+    def from_json(json_string: str) -> Self:
+        data = json.loads(json_string)
+        student_id = data['student_id']
+        task_id = data['task_id']
         res = StosTaskResponse(student_id, task_id)
-        res.files = json_object['files']
+        res.files = data['file_ids']
         return res
 
 
