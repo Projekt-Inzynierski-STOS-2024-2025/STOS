@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Callable, override
 from time import sleep
 import os
-
+import shutil
 from manager.api_driver import IApiDriver, STOSApiDriver
 from manager.cache_driver import ICacheDriver, SQliteCacheDriver
 from manager.storage_driver import IStorageDriver, LocalStorageDriver
@@ -17,7 +17,7 @@ class IManager(ABC):
 
     # TODO - determine what data is passed
     @abstractmethod
-    def task_completion_callback(self):
+    def task_completion_callback(self, task_data: TaskData, output_path: str):
         pass
 
     @abstractmethod
@@ -45,7 +45,7 @@ class Manager(IManager):
                  ) -> None:
         self.__new_task_callbacks = []
         # Load configuration from env variables
-        self.__request_timeout = int(os.environ.get("MANAGER_REQUEST_TIMEOUT", "1"));
+        self.__request_timeout = int(os.environ.get("MANAGER_REQUEST_TIMEOUT", "1"))
         # DI
         self.__api_driver = api
         self.__cache_driver = cache
@@ -56,8 +56,10 @@ class Manager(IManager):
         self.__new_task_callbacks.append(callback)
 
     @override
-    def task_completion_callback(self):
-        pass
+    def task_completion_callback(self, task_data: TaskData, output_path: str):
+        print('Received task completion data')
+        self.__api_driver.upload_results(task_data.task_id)
+        shutil.rmtree(output_path)
 
     @override
     def listen(self):

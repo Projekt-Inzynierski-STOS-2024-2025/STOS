@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
+from nt import environ
 from typing import override
-
+from flask import request
+import requests
 from manager.types import StosTaskResponse
 
 class IApiDriver(ABC):
@@ -17,30 +19,32 @@ class IApiDriver(ABC):
 
     @staticmethod
     @abstractmethod
-    def upload_results():
+    def upload_results(id: str) -> None:
         pass
 
 
 class STOSApiDriver(IApiDriver):
 
+    __api_port: str = environ.get('STOS_PORT', '2137')
+    __api_url: str = f"http://{environ.get('STOS_HOST', '127.0.0.1')}:{__api_port}"
+
     @override
     @staticmethod
     def fetch_tasks() -> StosTaskResponse:
-        # TODO - actual api communication
-        res = {"student_id": "2137", "task_id": "2201", "files": ["1", "2", "54"]}
-        return StosTaskResponse.from_json(res)
+        response = requests.get(STOSApiDriver.__api_url + '/tasks' )
+        response.raise_for_status()  # Raise an error for bad status codes
+        return StosTaskResponse.from_json(response.text)
 
     @override
     @staticmethod
     def download_file(id: str) -> str:
-        # TODO - actually fetch it from api
-        return f"Some file contents {id}"
+        response = requests.get(STOSApiDriver.__api_url + "/files/" + id)
+        response.raise_for_status()
+        return response.text
 
     @override
     @staticmethod
-    def upload_results():
-        pass
-
-
-
-
+    def upload_results(id: str) -> None:
+        response = requests.post(STOSApiDriver.__api_url +  '/tasks/' + id)
+        response.raise_for_status()       
+        return
