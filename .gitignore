@@ -172,6 +172,5 @@ output
 #worker input files
 worker_files
 
-tmp
-
 *.db
+.DS_Store

@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
-from nt import environ
 from typing import override
-from flask import request
 import requests
 from manager.types import StosTaskResponse
+from os import environ 
 
 class IApiDriver(ABC):
 
