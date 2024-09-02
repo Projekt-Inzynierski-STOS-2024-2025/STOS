@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from os import environ, stat
+from os import environ
 from typing import override
 import sqlite3 as sqlite
 
