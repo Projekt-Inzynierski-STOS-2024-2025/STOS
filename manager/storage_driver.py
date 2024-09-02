@@ -20,7 +20,7 @@ class IStorageDriver(ABC):
 class LocalStorageDriver(IStorageDriver):
     
     # __SAVE_PATH = Path("./tmp/stos/")
-    __SAVE_PATH = "tmp/stos"
+    __SAVE_PATH = "/tmp/stos/"
 
     @staticmethod
     @override

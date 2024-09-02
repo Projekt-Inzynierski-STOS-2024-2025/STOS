@@ -1,0 +1,9 @@
+[Unit]
+Description=STOS daemon managing code execution container instances
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+User=stos
+ExecStart=/usr/bin/stos-bootstrap
