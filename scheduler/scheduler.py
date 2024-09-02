@@ -41,13 +41,13 @@ class IScheduler(ABC):
 
     # register callback function that is run on task finish
     @abstractmethod
-    def register_task_completion_callback(self, callback: Callable[[TaskData], None])-> None:
+    def register_task_completion_callback(self, callback: Callable[[TaskData, str], None])-> None:
         pass
  
 
 class Scheduler(IScheduler):
 
-    __task_completion_callbacks: list[Callable[[TaskData], None]]
+    __task_completion_callbacks: list[Callable[[TaskData, str], None]]
     __tasks_queue: queue.Queue[TaskData]
     __workers_queue: queue.Queue[Worker]
     __workers_delta: int
@@ -128,5 +128,5 @@ class Scheduler(IScheduler):
             self.__workers_delta += 1
 
     @override 
-    def register_task_completion_callback(self, callback: Callable[[TaskData], None]) -> None:
+    def register_task_completion_callback(self, callback: Callable[[TaskData, str], None]) -> None:
         self.__task_completion_callbacks.append(callback)
