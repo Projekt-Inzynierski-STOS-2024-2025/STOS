@@ -39,14 +39,18 @@ class SQliteCacheDriver(ICacheDriver):
     # Do not access directly, please use __get_connection()
     __connection: sqlite.Connection | None = None
 
+    __use_cache: bool = False if environ.get("USE_CACHE", "False") else True 
+
     @override
     @staticmethod
     def check_files(files: list[str]) -> list[str]:
-        missing: list[str] = []
-        for file_id in files:
-            if SQliteCacheDriver.get_entry(file_id) is None:
-                missing.append(file_id)
-        return missing
+        if SQliteCacheDriver.__use_cache:
+            missing: list[str] = []
+            for file_id in files:
+                if SQliteCacheDriver.get_entry(file_id) is None:
+                    missing.append(file_id)
+            return missing
+        return files
 
     @staticmethod
     @override
