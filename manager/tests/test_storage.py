@@ -11,17 +11,18 @@ def test_save():
     assert path == f"/tmp/stos/{id}"
     assert os.path.isfile(path)
 
-    with open(path, 'r') as saved_file:
+    with open(path, 'r', encoding='utf-8') as saved_file:
         saved_contents = saved_file.read()
 
     assert content == saved_contents
+
 
 def test_read():
     id = "4"
     content = "Some text to read"
     path = f"/tmp/stos/{id}"
 
-    with open(path, 'w') as file:
+    with open(path, 'w', encoding='utf-8') as file:
         _ = file.write(content)
 
     read_content = LocalStorageDriver.get_file(path)

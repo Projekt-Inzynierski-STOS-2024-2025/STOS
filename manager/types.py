@@ -1,7 +1,7 @@
+import json
 from typing import Self
 from enum import Enum
 from uuid import UUID
-import json
 
 
 # STOS Api responses
@@ -34,6 +34,7 @@ class TaskFileType(Enum):
     RESULT_FILE = 3
     ADDITIONAL_INFO_FILE = 4
 
+
 # Object representing single file in context of Task
 class TaskFile:
     file_id: str
@@ -44,8 +45,9 @@ class TaskFile:
         self.file_id = file_id
         self.disk_path = disk_path
         self.task_type = task_type
-    
-# Object representing a single task, exchanged between schedulear and manager
+
+
+# Object representing a single task, exchanged between scheduler and manager
 class TaskData:
     files: list[TaskFile]
     task_id: str
@@ -53,12 +55,12 @@ class TaskData:
     def __init__(self, task_id: str, files: list[TaskFile]) -> None:
         self.task_id = task_id
         self.files = files
-        
+
 
 class Worker:
     status: str
     worker_id: UUID
 
-    def __init__(self, status: str, worker_id: UUID ) -> None:
+    def __init__(self, status: str, worker_id: UUID) -> None:
         self.status = status
         self.worker_id = worker_id

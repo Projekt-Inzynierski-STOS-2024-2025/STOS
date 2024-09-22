@@ -1,8 +1,8 @@
 from random import randint
 from os import environ
 from uuid import uuid4
-from flask import Flask, jsonify, send_file
 from pathlib import Path
+from flask import Flask, jsonify, send_file
 
 
 app = Flask(__name__)
@@ -31,7 +31,7 @@ def files(file_id: str):
     :return: Invokes send_file function of flask library.
     """
     file_path = str(Path('data.txt'))
-    with open( file_path, "w") as randomized_file:
+    with open(file_path, "w", encoding='utf-8') as randomized_file:
         _ = randomized_file.write(str(file_id))
 
     return send_file(file_path, as_attachment=True, mimetype="text/plain"), 200
@@ -45,6 +45,7 @@ def task(task_id: str):
     :return: Result message in JSON format.
     """
     return jsonify({"result": "uploaded " + str(task_id)}), 200
+
 
 PORT = int(environ.get("STOS_PORT", '2137'))
 HOST = environ.get("STOS_HOST", '127.0.0.1')

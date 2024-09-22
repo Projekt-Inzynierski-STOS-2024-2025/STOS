@@ -1,14 +1,13 @@
+import sqlite3 as sqlite
+import sys
 from abc import ABC, abstractmethod
 from os import environ
 from typing import override
-import sqlite3 as sqlite
-
 from manager.types import TaskFile, TaskFileType
 
 
 class ICacheDriver(ABC):
-
-    # Checks cache for existance of files and returns missing files
+    # Checks cache for existence of files and returns missing files
     @staticmethod
     @abstractmethod
     def check_files(files: list[str]) -> list[str]:
@@ -33,9 +32,7 @@ class ICacheDriver(ABC):
         pass
 
 
-
 class SQliteCacheDriver(ICacheDriver):
-
     # Do not access directly, please use __get_connection()
     __connection: sqlite.Connection | None = None
 
@@ -50,7 +47,7 @@ class SQliteCacheDriver(ICacheDriver):
 
     @staticmethod
     @override
-    def add_entry(file: str, path: str):
+    def add_entry(file: str, path: str) -> None:
         sql_insertable = [file, path]
         command = """INSERT INTO files (fileId, filePath) VALUES(?, ?)"""
         conn = SQliteCacheDriver.__get_connection()
@@ -59,11 +56,10 @@ class SQliteCacheDriver(ICacheDriver):
         cursor = conn.cursor()
         _ = cursor.execute(command, sql_insertable)
         conn.commit()
-        return
 
     @staticmethod
     @override
-    def delete_entry(file: str):
+    def delete_entry(file: str) -> None:
         command = """DELETE FROM files WHERE fileId = ?"""
         conn = SQliteCacheDriver.__get_connection()
         cursor = conn.cursor()
@@ -80,40 +76,35 @@ class SQliteCacheDriver(ICacheDriver):
         res: tuple[str] | None = cursor.fetchone()
         if res:
             return TaskFile(file, res[0], TaskFileType.STUDENT_FILE)
-        else:
-            return None
+        return None
 
     @staticmethod
     def __get_connection() -> sqlite.Connection:
         if SQliteCacheDriver.__connection is None:
             SQliteCacheDriver.__initialize_sqlite_connection()
         return SQliteCacheDriver.__connection
-            
 
     @staticmethod
-    def __initialize_sqlite_connection():
+    def __initialize_sqlite_connection() -> None:
         try:
             db_name = SQliteCacheDriver.__get_database_name()
             connection = sqlite.connect(db_name)
         except sqlite.Error as e:
             print(e)
-            exit(-1)
+            sys.exit(-1)
         finally:
             SQliteCacheDriver.__connection = connection
             SQliteCacheDriver.__execute_startup_script()
 
     @staticmethod
-    def __get_database_name():
+    def __get_database_name() -> str:
         env = environ.get("ENVIRONMENT", 'dev')
         if env == "test":
             return environ.get("TEST_DB", "test") + ".db"
-        else:
-            return environ.get("DB", "cache") + ".db"
+        return environ.get("DB", "cache") + ".db"
 
-
-    
     @staticmethod
-    def __execute_startup_script():
+    def __execute_startup_script() -> None:
         conn = SQliteCacheDriver.__get_connection()
         commands = ["""
                     CREATE TABLE IF NOT EXISTS files (
