@@ -2,6 +2,7 @@
 current_dir=$(dirname "$(realpath "$0")")
 cd $current_dir
 root_dir=$(dirname "$current_dir")
+ns=$(which nix-shell)
 echo --- Running testing.sh ---
 nix-shell shell.testing.nix --run "./test.sh"
 if [ $? -ne 0 ]; then
@@ -10,12 +11,15 @@ if [ $? -ne 0 ]; then
 fi
 echo --- Entering root environment ---
 echo --- Generating stos startup script for systemd ---
-sudo tee /etc/bin/stos-bootstrap > /dev/null << EOF
+sudo touch /usr/bin/stos-bootstrap
+sudo tee /usr/bin/stos-bootstrap > /dev/null << EOF
 #!/bin/bash
 cd $root_dir
-/nix/var/nix/profiles/default/bin/nix-shell $current_dir --run 'python3 main.py'
+$ns $current_dir/shell.nix --run 'filebeat -c ./deployment/filebeat.yml' &
+$ns $current_dir/shell.nix --run 'python3 main.py' >> /home/stos/stos.log &
+wait
 EOF
-sudo chmod +x /etc/bin/stos-bootstrap
+sudo chmod +x /usr/bin/stos-bootstrap
 echo --- Updating service configuration ---
 sudo cp ./stos.service /etc/systemd/system/stos.service
 echo --- Starting stos.service ---

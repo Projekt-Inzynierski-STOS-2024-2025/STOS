@@ -1,0 +1,29 @@
+# @lukrzak please modify the config in here
+# ============================ Filebeat Inputs =============================
+
+filebeat.inputs:
+  - type: log
+    enabled: true
+    # Paths to the log files you want to collect for testing
+    paths:
+      - /home/stos/stos.log
+    # Optional additional fields for the log event
+    fields:
+      environment: production
+      service: stos
+
+
+# =========================== General Settings ===========================
+
+output.file:
+  path: "/home/stos/"
+  filename: "filebeat_output"
+
+# ======================= Optional Logging Configuration =======================
+logging.level: debug  # Set to debug for more detailed output
+logging.to_files: true
+logging.files:
+  path: /home/stos
+  name: filebeat.log
+  keepfiles: 7
+  permissions: 0644
