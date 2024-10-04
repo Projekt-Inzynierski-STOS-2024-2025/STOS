@@ -10,5 +10,6 @@ pkgs.mkShellNoCC {
       python-pkgs.requests
     ]))
     pkgs.sqlite
+    pkgs.filebeat
   ];
 }
