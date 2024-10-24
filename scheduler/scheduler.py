@@ -6,16 +6,10 @@ import queue
 from uuid import uuid4
 import subprocess
 import shutil
-from .scheduler_types import Worker
 from manager.types import TaskData, TaskFile, TaskFileType
 import os
 
 class IScheduler(ABC):
-
-    # initialize queue with workers
-    @abstractmethod
-    def init_workers(self, number_of_workers: int) -> None:
-        pass
      
     # add task data to queue 
     @abstractmethod
@@ -31,42 +25,41 @@ class IScheduler(ABC):
 
     # run container that process the task
     @abstractmethod
-    def run_container(self, taskData: TaskData, worker: Worker) -> None:
-        pass
-
-    # change amount of workers in queue
-    @abstractmethod
-    def change_workers_count(self) -> None:
+    def run_container(self, taskData: TaskData) -> None:
         pass
 
     # register callback function that is run on task finish
     @abstractmethod
-    def register_task_completion_callback(self, callback: Callable[[TaskData, str], None])-> None:
+    def register_task_completion_callback(self, callback: Callable[[TaskData, Path], None])-> None:
         pass
  
 
 class Scheduler(IScheduler):
 
-    __task_completion_callbacks: list[Callable[[TaskData, str], None]]
+    __task_completion_callbacks: list[Callable[[TaskData, Path], None]]
     __tasks_queue: queue.Queue[TaskData]
-    __workers_queue: queue.Queue[Worker]
-    __workers_delta: int
+    __available_workers: int
     __lock: threading.Lock
+    __worker_cpu: str
+    __worker_ram: str
+    __total_cpu: str
+    __total_ram: str
 
 
     def __init__(self):
         self.__task_completion_callbacks = []
         self.__tasks_queue = queue.Queue()
-        self.__workers_queue = queue.Queue()
-        self.__workers_delta = 0
         self.__lock = threading.Lock()
-        self.init_workers(int(os.environ.get("NUMBER_OF_WORKERS", "3")))
-        
-
-    @override
-    def init_workers(self, number_of_workers: int) -> None:
-        for _ in range(number_of_workers):
-            self.__workers_queue.put( Worker(worker_id=str(uuid4())))
+        self.__worker_cpu = os.environ.get("WORKER_CPU", "1")
+        self.__worker_ram = os.environ.get("WORKER_RAM", "1Gi")
+        self.__total_cpu = os.environ.get("TOTAL_CPU", "1")
+        self.__total_ram = os.environ.get("TOTAL_RAM", "1Gi")
+        self.__available_workers = self.get_initial_workers_count()
+    
+    def get_initial_workers_count(self) -> int:
+        ram_workers = int(self.convert_memory_to_gb(self.__total_ram) / self.convert_memory_to_gb(self.__worker_ram))
+        cpu_workers = int(float(self.__total_cpu) / float(self.__worker_cpu))
+        return min(ram_workers, cpu_workers)
 
     @override
     def register_new_task(self, taskData: TaskData) -> None:
@@ -76,17 +69,17 @@ class Scheduler(IScheduler):
     @override
     def manage_workers(self) -> None:
         with self.__lock:
-            if self.__workers_delta != 0 :
-                self.change_workers_count()
-            while not self.__workers_queue.empty() and not self.__tasks_queue.empty():
+            while self.__available_workers > 0 and not self.__tasks_queue.empty():
+                self.__available_workers -= 1
                 task = self.__tasks_queue.get()
-                thread = threading.Thread(target=self.run_container, args=(task, self.__workers_queue.get()))
+                thread = threading.Thread(target=self.run_container, args=(task,))
                 thread.start()
 
     @override
-    def run_container(self, taskData: TaskData, worker: Worker) -> None:
+    def run_container(self, taskData: TaskData) -> None:
+        worker_id = uuid4()
         print(f"Started mock container for task {taskData.task_id}")
-        worker_dir = Path(f"./worker_files/{worker.worker_id}")
+        worker_dir = Path(f"./worker_files/{worker_id}")
         worker_dir.parent.mkdir(exist_ok=True)
         if worker_dir.exists():
             shutil.rmtree(worker_dir)
@@ -96,9 +89,11 @@ class Scheduler(IScheduler):
         abs_path_to_files = str(worker_dir.resolve())
         _ =subprocess.run([
             "docker", "run", "--rm",
-            "--name", f"worker_{worker.worker_id}" ,
+            "--name", f"worker_{worker_id}" ,
             "-e", f"FILES_PATH={worker_dir}",
             "-v", f"{abs_path_to_files}:/app/{worker_dir}", 
+            "--cpus", self.__worker_cpu,        
+            "--memory", self.__worker_ram, 
             "worker"
         ], 
         check=True)
@@ -114,18 +109,17 @@ class Scheduler(IScheduler):
         for callback in self.__task_completion_callbacks:
             callback(resultData, output_dir)
         with self.__lock:
-            self.__workers_queue.put(worker)
+            self.__available_workers += 1
         self.manage_workers()
 
-    @override
-    def change_workers_count(self) -> None:
-        while self.__workers_delta > 0:
-            self.__workers_queue.put(Worker(str(uuid4())))
-            self.__workers_delta -= 1
-        while self.__workers_delta < 0 and not self.__workers_queue.empty():
-            _ = self.__workers_queue.get()
-            self.__workers_delta += 1
-
     @override 
-    def register_task_completion_callback(self, callback: Callable[[TaskData, str], None]) -> None:
+    def register_task_completion_callback(self, callback: Callable[[TaskData, Path], None]) -> None:
         self.__task_completion_callbacks.append(callback)
+
+    def convert_memory_to_gb(self, memory: str) -> float:
+        if memory.endswith('Gi'):
+            return float(memory[:-2])
+        elif memory.endswith('Mi'):
+            return float(memory[:-2])
+        else:
+            raise ValueError(f"Unprocessable value: {memory}")

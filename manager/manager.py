@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Callable, override
 from time import sleep
 import os
@@ -17,7 +18,7 @@ class IManager(ABC):
 
     # TODO - determine what data is passed
     @abstractmethod
-    def task_completion_callback(self, task_data: TaskData, output_path: str):
+    def task_completion_callback(self, task_data: TaskData, output_path: Path):
         pass
 
     @abstractmethod
@@ -56,7 +57,7 @@ class Manager(IManager):
         self.__new_task_callbacks.append(callback)
 
     @override
-    def task_completion_callback(self, task_data: TaskData, output_path: str):
+    def task_completion_callback(self, task_data: TaskData, output_path: Path):
         print('Received task completion data')
         self.__api_driver.upload_results(task_data.task_id)
         shutil.rmtree(output_path)
