@@ -41,9 +41,7 @@ def files(file_id: str):
     :param file_id: Id of the file.
     :return: Invokes send_file function of flask library.
     """
-    file_path = str(Path('data.txt'))
-    with open( file_path, "w") as randomized_file:
-        _ = randomized_file.write(str(file_id))
+    file_path = str(Path('main.cpp'))
 
     return send_file(file_path, as_attachment=True, mimetype="text/plain"), 200
 

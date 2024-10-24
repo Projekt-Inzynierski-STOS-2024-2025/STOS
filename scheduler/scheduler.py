@@ -52,8 +52,8 @@ class Scheduler(IScheduler):
         self.__lock = threading.Lock()
         self.__worker_cpu = os.environ.get("WORKER_CPU", "1")
         self.__worker_ram = os.environ.get("WORKER_RAM", "1Gi")
-        self.__total_cpu = os.environ.get("TOTAL_CPU", "1")
-        self.__total_ram = os.environ.get("TOTAL_RAM", "1Gi")
+        self.__total_cpu = subprocess.check_output(["nproc"]).decode().strip() 
+        self.__total_ram = subprocess.check_output(["free -h | awk '/^Mem:/ {print $2}'"]).decode().strip()
         self.__available_workers = self.get_initial_workers_count()
     
     def get_initial_workers_count(self) -> int:

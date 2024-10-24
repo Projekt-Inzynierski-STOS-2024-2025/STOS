@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SOURCE_FILE=project/source/main.cpp
+SOURCE_FILE=project/main.cpp
 
 INPUT_DIR=project/input
 
@@ -22,6 +22,14 @@ x86_64-w64-mingw32-g++ $SOURCE_FILE -static-libstdc++ -static-libgcc -o $OUTPUT_
 
 if [ $? -eq 0 ]; then
     echo "Kompilacja zakończona sukcesem. Uruchamianie programu dla każdego pliku wejściowego..."
+
+    OUTPUT_LOG="${OUTPUT_DIR}/1.out"
+    
+    echo "Uruchamianie dla Tymka, zapis wyjścia do $OUTPUT_LOG"
+
+    xvfb-run wine64 $OUTPUT_FILE > $TMP_LOG_FILE 2>&1
+    
+    grep -v -f <(printf "%s\\n" "${LOG_FILTERS[@]}") $TMP_LOG_FILE > $OUTPUT_LOG
 
     for INPUT_FILE in $INPUT_DIR/*.in; do
         FILE_BASENAME=$(basename "$INPUT_FILE" .in)
