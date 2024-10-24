@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SOURCE_FILE=project/main.cpp
+SOURCE_FILE=project/source/main.cpp
 
 INPUT_DIR=project/input
 

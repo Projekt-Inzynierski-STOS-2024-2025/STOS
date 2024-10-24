@@ -53,7 +53,7 @@ class Scheduler(IScheduler):
         self.__worker_cpu = os.environ.get("WORKER_CPU", "1")
         self.__worker_ram = os.environ.get("WORKER_RAM", "1Gi")
         self.__total_cpu = subprocess.check_output(["nproc"]).decode().strip() 
-        self.__total_ram = subprocess.check_output(["free -h | awk '/^Mem:/ {print $2}'"]).decode().strip()
+        self.__total_ram = subprocess.check_output(["free -h | awk '/^Mem:/ {print $2}'"], shell=True).decode().strip()
         self.__available_workers = self.get_initial_workers_count()
     
     def get_initial_workers_count(self) -> int:
@@ -85,15 +85,15 @@ class Scheduler(IScheduler):
             shutil.rmtree(worker_dir)
         worker_dir.mkdir()
         for file in taskData.files:
-            shutil.copy(file.disk_path, worker_dir / Path(file.disk_path).name)
+            shutil.copy(file.disk_path, worker_dir / "source/main.cpp")
         abs_path_to_files = str(worker_dir.resolve())
         _ =subprocess.run([
             "docker", "run", "--rm",
             "--name", f"worker_{worker_id}" ,
             "-e", f"FILES_PATH={worker_dir}",
-            "-v", f"{abs_path_to_files}:/app/{worker_dir}", 
+            "-v", f"{abs_path_to_files}:/app/project", 
             "--cpus", self.__worker_cpu,        
-            "--memory", self.__worker_ram, 
+            "--memory", self.__worker_ram+"g", 
             "worker"
         ], 
         check=True)
@@ -117,9 +117,5 @@ class Scheduler(IScheduler):
         self.__task_completion_callbacks.append(callback)
 
     def convert_memory_to_gb(self, memory: str) -> float:
-        if memory.endswith('Gi'):
-            return float(memory[:-2])
-        elif memory.endswith('Mi'):
-            return float(memory[:-2])
-        else:
-            raise ValueError(f"Unprocessable value: {memory}")
+        return float(memory)
+
