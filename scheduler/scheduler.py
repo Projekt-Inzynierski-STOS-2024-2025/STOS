@@ -105,8 +105,7 @@ class Scheduler(IScheduler):
         print(f"Mock container for task {taskData.task_id} has completed work.")
         resultData: TaskData = TaskData(taskData.task_id, [])
         output_dir = Path(f"./output/{taskData.task_id}")
-        output_dir.parent.mkdir(exist_ok=True)
-        output_dir.mkdir()
+        output_dir.mkdir(parents=True, exist_ok=True)
         for file_path in worker_dir.iterdir():
             if file_path.is_file():
                 shutil.copy(file_path, output_dir / file_path.name)
