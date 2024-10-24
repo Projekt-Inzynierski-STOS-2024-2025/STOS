@@ -117,5 +117,10 @@ class Scheduler(IScheduler):
         self.__task_completion_callbacks.append(callback)
 
     def convert_memory_to_gb(self, memory: str) -> float:
-        return float(memory)
+        if memory.endswith('Gi'):
+            return float(memory[:-2])
+        elif memory.endswith('Mi'):
+            return float(memory[:-2])
+        else:
+             return float(memory)
 
