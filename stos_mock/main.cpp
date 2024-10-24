@@ -15,7 +15,7 @@ std::vector<std::vector<int>> multiplyMatrices(const std::vector<std::vector<int
 }
 
 int main() {
-    const int N = 10000;
+    const int N = 1000;
 
     std::vector<std::vector<int>> A(N, std::vector<int>(N, 1));
     std::vector<std::vector<int>> B(N, std::vector<int>(N, 2));
@@ -27,7 +27,7 @@ int main() {
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
 
-    std::cout << "Mnożenie macierzy o rozmiarze " << N << " x " << N << " zajęło: " << elapsed.count() << " sekund." << std::endl;
+    std::cout <<  elapsed.count() << std::endl;
 
     return 0;
 }

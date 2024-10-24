@@ -9,6 +9,7 @@ RUN dpkg --add-architecture i386 && \
     mingw-w64 \
     wine64 \
     wine32 \
+    wine \
     xvfb \
     dos2unix \
     && apt-get clean && \

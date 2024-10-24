@@ -58,7 +58,7 @@ class Scheduler(IScheduler):
     
     def get_initial_workers_count(self) -> int:
         ram_workers = int(self.convert_memory_to_gb(self.__total_ram) / self.convert_memory_to_gb(self.__worker_ram))
-        cpu_workers = int(float(self.__total_cpu) / float(self.__worker_cpu))
+        cpu_workers = int(float(self.__total_cpu) / float(self.__worker_cpu)) - 2
         return min(ram_workers, cpu_workers)
 
     @override
@@ -84,13 +84,14 @@ class Scheduler(IScheduler):
         if worker_dir.exists():
             shutil.rmtree(worker_dir)
         worker_dir.mkdir()
+        worker_source_dir = Path(worker_dir/"source")
+        worker_source_dir.mkdir(exist_ok=True)
         for file in taskData.files:
-            shutil.copy(file.disk_path, worker_dir / "source/main.cpp")
+            shutil.copy(file.disk_path, worker_source_dir / "main.cpp")
         abs_path_to_files = str(worker_dir.resolve())
         _ =subprocess.run([
             "docker", "run", "--rm",
             "--name", f"worker_{worker_id}" ,
-            "-e", f"FILES_PATH={worker_dir}",
             "-v", f"{abs_path_to_files}:/app/project", 
             "--cpus", self.__worker_cpu,        
             "--memory", self.__worker_ram+"g", 

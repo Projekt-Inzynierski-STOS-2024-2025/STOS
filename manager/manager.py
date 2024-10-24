@@ -60,7 +60,10 @@ class Manager(IManager):
     def task_completion_callback(self, task_data: TaskData, output_path: Path):
         print('Received task completion data')
         self.__api_driver.upload_results(task_data.task_id)
-        shutil.rmtree(output_path)
+        try:
+            shutil.rmtree(output_path)
+        except:
+            print("Error handled successfully")
 
     @override
     def listen(self):
