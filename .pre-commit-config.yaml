@@ -1,0 +1,8 @@
+# git config --system core.longpaths true
+# To skip, use --no-verify flag in git commit command
+repos:
+-   repo: https://github.com/PyCQA/prospector
+    rev: 1.10.0
+    hooks:
+    -   id: prospector
+        args: ['--profile-path=prospector.yaml']
