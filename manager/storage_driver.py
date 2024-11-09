@@ -22,7 +22,7 @@ class IStorageDriver(ABC):
 class LocalStorageDriver(IStorageDriver):
 
     logging.basicConfig(
-        filename='local_storage_driver.log',
+        filename=os.environ.get("LOGS_PATH", "/home/stos/") + 'local_storage_driver.log',
         filemode='a',
         encoding='utf-8',
         format="{asctime} - {levelname} - {message}"

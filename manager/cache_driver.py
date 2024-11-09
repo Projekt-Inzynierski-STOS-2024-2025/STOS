@@ -1,4 +1,5 @@
 import logging
+import os
 from abc import ABC, abstractmethod
 from os import environ
 from typing import override
@@ -37,7 +38,7 @@ class ICacheDriver(ABC):
 class SQliteCacheDriver(ICacheDriver):
 
     logging.basicConfig(
-        filename='sqlite_cache_driver.log',
+        filename=os.environ.get("LOGS_PATH", "/home/stos/") + 'sqlite_cache_driver.log',
         filemode='a',
         encoding='utf-8',
         format="{asctime} - {levelname} - {message}"

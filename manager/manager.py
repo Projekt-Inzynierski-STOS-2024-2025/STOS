@@ -29,7 +29,7 @@ class IManager(ABC):
 class Manager(IManager):
 
     logging.basicConfig(
-        filename='manager.log',
+        filename=os.environ.get("LOGS_PATH", "/home/stos/") + 'manager.log',
         filemode='a',
         encoding='utf-8',
         format="{asctime} - {levelname} - {message}"

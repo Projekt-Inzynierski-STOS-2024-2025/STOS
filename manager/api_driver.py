@@ -1,4 +1,5 @@
 import logging
+import os
 from abc import ABC, abstractmethod
 from typing import override
 import requests
@@ -30,7 +31,7 @@ class IApiDriver(ABC):
 class STOSApiDriver(IApiDriver):
 
     logging.basicConfig(
-        filename='stos_api_driver.log',
+        filename=os.environ.get("LOGS_PATH", "/home/stos/") + 'stos_api_driver.log',
         filemode='a',
         encoding='utf-8',
         format="{asctime} - {levelname} - {message}"

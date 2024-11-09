@@ -50,7 +50,7 @@ class IScheduler(ABC):
 class Scheduler(IScheduler):
 
     logging.basicConfig(
-        filename='scheduler.log',
+        filename=os.environ.get("LOGS_PATH", "/home/stos/") + 'scheduler.log',
         filemode='a',
         encoding='utf-8',
         format="{asctime} - {levelname} - {message}"
