@@ -33,8 +33,7 @@ class STOSApiDriver(IApiDriver):
     logging.basicConfig(
         filename=os.environ.get("LOGS_PATH", "/home/stos/") + 'stos_api_driver.log',
         filemode='a',
-        encoding='utf-8',
-        format="{asctime} - {levelname} - {message}"
+        encoding='utf-8'
     )
 
     __api_port: str = environ.get('STOS_PORT', '2137')

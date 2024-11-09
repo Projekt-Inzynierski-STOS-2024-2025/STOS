@@ -24,8 +24,7 @@ class LocalStorageDriver(IStorageDriver):
     logging.basicConfig(
         filename=os.environ.get("LOGS_PATH", "/home/stos/") + 'local_storage_driver.log',
         filemode='a',
-        encoding='utf-8',
-        format="{asctime} - {levelname} - {message}"
+        encoding='utf-8'
     )
 
     # __SAVE_PATH = Path("./tmp/stos/")

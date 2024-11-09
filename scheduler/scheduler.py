@@ -52,8 +52,7 @@ class Scheduler(IScheduler):
     logging.basicConfig(
         filename=os.environ.get("LOGS_PATH", "/home/stos/") + 'scheduler.log',
         filemode='a',
-        encoding='utf-8',
-        format="{asctime} - {levelname} - {message}"
+        encoding='utf-8'
     )
 
     __task_completion_callbacks: list[Callable[[TaskData, str], None]]

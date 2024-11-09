@@ -40,8 +40,7 @@ class SQliteCacheDriver(ICacheDriver):
     logging.basicConfig(
         filename=os.environ.get("LOGS_PATH", "/home/stos/") + 'sqlite_cache_driver.log',
         filemode='a',
-        encoding='utf-8',
-        format="{asctime} - {levelname} - {message}"
+        encoding='utf-8'
     )
 
     # Do not access directly, please use __get_connection()
