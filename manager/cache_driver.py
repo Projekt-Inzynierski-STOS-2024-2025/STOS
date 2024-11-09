@@ -1,3 +1,4 @@
+import logging
 from abc import ABC, abstractmethod
 from os import environ
 from typing import override
@@ -8,7 +9,7 @@ from manager.types import TaskFile, TaskFileType
 
 class ICacheDriver(ABC):
 
-    # Checks cache for existance of files and returns missing files
+    # Checks cache for existence of files and returns missing files
     @staticmethod
     @abstractmethod
     def check_files(files: list[str]) -> list[str]:
@@ -17,13 +18,13 @@ class ICacheDriver(ABC):
     # Adds entry regarding a single file to cache and overwrites old record
     @staticmethod
     @abstractmethod
-    def add_entry(file: str, path: str):
+    def add_entry(file: str, path: str) -> None:
         pass
 
     # Deletes a record representing file
     @staticmethod
     @abstractmethod
-    def delete_entry(file: str):
+    def delete_entry(file: str) -> None:
         pass
 
     # Get file entry, returns None if file does not exist
@@ -33,24 +34,31 @@ class ICacheDriver(ABC):
         pass
 
 
-
 class SQliteCacheDriver(ICacheDriver):
+
+    logging.basicConfig(
+        filename='sqlite_cache_driver.log',
+        filemode='a',
+        encoding='utf-8',
+        format="{asctime} - {levelname} - {message}"
+    )
 
     # Do not access directly, please use __get_connection()
     __connection: sqlite.Connection | None = None
 
-    @override
     @staticmethod
+    @override
     def check_files(files: list[str]) -> list[str]:
         missing: list[str] = []
         for file_id in files:
             if SQliteCacheDriver.get_entry(file_id) is None:
                 missing.append(file_id)
+        logging.debug(f"Found {len(missing)} files missing: {missing}")
         return missing
 
     @staticmethod
     @override
-    def add_entry(file: str, path: str):
+    def add_entry(file: str, path: str) -> None:
         sql_insertable = [file, path]
         command = """INSERT INTO files (fileId, filePath) VALUES(?, ?)"""
         conn = SQliteCacheDriver.__get_connection()
@@ -59,16 +67,17 @@ class SQliteCacheDriver(ICacheDriver):
         cursor = conn.cursor()
         _ = cursor.execute(command, sql_insertable)
         conn.commit()
-        return
+        logging.debug(f"Added {file} to the database")
 
     @staticmethod
     @override
-    def delete_entry(file: str):
+    def delete_entry(file: str) -> None:
         command = """DELETE FROM files WHERE fileId = ?"""
         conn = SQliteCacheDriver.__get_connection()
         cursor = conn.cursor()
         _ = cursor.execute(command, [file])
         conn.commit()
+        logging.debug(f"Removed {file} from the database")
 
     @staticmethod
     @override
@@ -81,39 +90,38 @@ class SQliteCacheDriver(ICacheDriver):
         if res:
             return TaskFile(file, res[0], TaskFileType.STUDENT_FILE)
         else:
+            logging.debug(f"Could not find file {file}")
             return None
 
     @staticmethod
     def __get_connection() -> sqlite.Connection:
         if SQliteCacheDriver.__connection is None:
             SQliteCacheDriver.__initialize_sqlite_connection()
+        logging.debug("Connection established")
         return SQliteCacheDriver.__connection
-            
 
     @staticmethod
-    def __initialize_sqlite_connection():
+    def __initialize_sqlite_connection() -> None:
         try:
             db_name = SQliteCacheDriver.__get_database_name()
             connection = sqlite.connect(db_name)
         except sqlite.Error as e:
-            print(e)
+            logging.error(f"Could not establish connection to database. Reason: {e}")
             exit(-1)
         finally:
             SQliteCacheDriver.__connection = connection
             SQliteCacheDriver.__execute_startup_script()
 
     @staticmethod
-    def __get_database_name():
+    def __get_database_name() -> str:
         env = environ.get("ENVIRONMENT", 'dev')
         if env == "test":
             return environ.get("TEST_DB", "test") + ".db"
         else:
             return environ.get("DB", "cache") + ".db"
-
-
     
     @staticmethod
-    def __execute_startup_script():
+    def __execute_startup_script() -> None:
         conn = SQliteCacheDriver.__get_connection()
         commands = ["""
                     CREATE TABLE IF NOT EXISTS files (
@@ -130,3 +138,4 @@ class SQliteCacheDriver(ICacheDriver):
         for command in commands:
             _ = cursor.execute(command)
         conn.commit()
+        logging.debug("Startup script executed")

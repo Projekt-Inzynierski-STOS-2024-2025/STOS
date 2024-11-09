@@ -1,7 +1,8 @@
+import logging
 from abc import ABC, abstractmethod
 import os
 from typing import override
-from pathlib import Path
+
 
 class IStorageDriver(ABC):
     
@@ -17,8 +18,16 @@ class IStorageDriver(ABC):
     def get_file(url: str) -> str | None:
         pass
 
+
 class LocalStorageDriver(IStorageDriver):
-    
+
+    logging.basicConfig(
+        filename='local_storage_driver.log',
+        filemode='a',
+        encoding='utf-8',
+        format="{asctime} - {levelname} - {message}"
+    )
+
     # __SAVE_PATH = Path("./tmp/stos/")
     __SAVE_PATH = "/tmp/stos/"
 
@@ -36,14 +45,16 @@ class LocalStorageDriver(IStorageDriver):
     def get_file(url: str) -> str | None:
         file_exists = os.path.isfile(url)
         if not file_exists:
+            logging.debug(f"File {url} does not exist")
             return None
         with open(url, 'r') as file:
             content = file.read()
+        logging.debug(f"File has been read successfully")
         return content
 
     @staticmethod
-    def __ensure_dir_structure():
+    def __ensure_dir_structure() -> None:
         if not os.path.isdir(LocalStorageDriver.__SAVE_PATH):
             # LocalStorageDriver.__SAVE_PATH.parent.mkdir(exist_ok=True)
+            logging.debug(f"Creating directory {LocalStorageDriver.__SAVE_PATH}")
             os.mkdir(LocalStorageDriver.__SAVE_PATH)
-
