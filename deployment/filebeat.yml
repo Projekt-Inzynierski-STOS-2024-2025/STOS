@@ -1,23 +1,18 @@
-# @lukrzak please modify the config in here
 # ============================ Filebeat Inputs =============================
 
 filebeat.inputs:
-  - type: log
+  - type: filestream
+    id: stos-logs
     enabled: true
-    # Paths to the log files you want to collect for testing
     paths:
-      - /home/stos/stos.log
-    # Optional additional fields for the log event
-    fields:
-      environment: production
-      service: stos
-
+      - /home/stos/*.log
 
 # =========================== General Settings ===========================
 
-output.file:
-  path: "/home/stos/"
-  filename: "filebeat_output"
+output.elasticsearch:
+  hosts: ["http://172.20.3.115:9200"]
+  username: "${ELASTIC_USERNAME:elastic}"
+  password: "${ELASTIC_PASSWORD}"
 
 # ======================= Optional Logging Configuration =======================
 logging.level: debug  # Set to debug for more detailed output

@@ -13,6 +13,7 @@ _System:_
 _Packages:_
 - [docker](https://www.docker.com/)
 - [nix-shell](https://nixos.org/), part of `nix` package manager
+- exported ELASTIC_PASSWORD env variable and (optional) ELASTIC_USERNAME, to connect to the elasticstack instance
 
 ## Deployment breakdown
 1. Firstly, the necessary healthchecks are performed, checking for existence of 3 things:
