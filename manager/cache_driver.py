@@ -1,10 +1,9 @@
 import logging
-import os
 from abc import ABC, abstractmethod
 from os import environ
-from typing import override
+from typing_extensions import override
 import sqlite3 as sqlite
-
+from logger.stos_logger import get_logger
 from manager.types import TaskFile, TaskFileType
 
 
@@ -37,11 +36,7 @@ class ICacheDriver(ABC):
 
 class SQliteCacheDriver(ICacheDriver):
 
-    logging.basicConfig(
-        filename=os.environ.get("LOGS_PATH", "/home/stos/") + 'sqlite_cache_driver.log',
-        filemode='a',
-        encoding='utf-8'
-    )
+    __stos_logger: logging.Logger = get_logger('sqlite_cache_driver')
 
     # Do not access directly, please use __get_connection()
     __connection: sqlite.Connection | None = None
@@ -53,7 +48,7 @@ class SQliteCacheDriver(ICacheDriver):
         for file_id in files:
             if SQliteCacheDriver.get_entry(file_id) is None:
                 missing.append(file_id)
-        logging.debug(f"Found {len(missing)} files missing: {missing}")
+        SQliteCacheDriver.__stos_logger.debug(f"Found {len(missing)} files missing: {missing}")
         return missing
 
     @staticmethod
@@ -67,7 +62,7 @@ class SQliteCacheDriver(ICacheDriver):
         cursor = conn.cursor()
         _ = cursor.execute(command, sql_insertable)
         conn.commit()
-        logging.debug(f"Added {file} to the database")
+        SQliteCacheDriver.__stos_logger.debug(f"Added {file} to the database")
 
     @staticmethod
     @override
@@ -77,7 +72,7 @@ class SQliteCacheDriver(ICacheDriver):
         cursor = conn.cursor()
         _ = cursor.execute(command, [file])
         conn.commit()
-        logging.debug(f"Removed {file} from the database")
+        SQliteCacheDriver.__stos_logger.debug(f"Removed {file} from the database")
 
     @staticmethod
     @override
@@ -90,14 +85,14 @@ class SQliteCacheDriver(ICacheDriver):
         if res:
             return TaskFile(file, res[0], TaskFileType.STUDENT_FILE)
         else:
-            logging.debug(f"Could not find file {file}")
+            SQliteCacheDriver.__stos_logger.debug(f"Could not find file {file}")
             return None
 
     @staticmethod
     def __get_connection() -> sqlite.Connection:
         if SQliteCacheDriver.__connection is None:
             SQliteCacheDriver.__initialize_sqlite_connection()
-        logging.debug("Connection established")
+        SQliteCacheDriver.__stos_logger.debug("Connection received")
         return SQliteCacheDriver.__connection
 
     @staticmethod
@@ -106,7 +101,7 @@ class SQliteCacheDriver(ICacheDriver):
             db_name = SQliteCacheDriver.__get_database_name()
             connection = sqlite.connect(db_name)
         except sqlite.Error as e:
-            logging.error(f"Could not establish connection to database. Reason: {e}")
+            SQliteCacheDriver.__stos_logger.error(f"Could not establish connection to database. Reason: {e}")
             exit(-1)
         finally:
             SQliteCacheDriver.__connection = connection
@@ -138,4 +133,4 @@ class SQliteCacheDriver(ICacheDriver):
         for command in commands:
             _ = cursor.execute(command)
         conn.commit()
-        logging.debug("Startup script executed")
+        SQliteCacheDriver.__stos_logger.debug("Startup script executed")

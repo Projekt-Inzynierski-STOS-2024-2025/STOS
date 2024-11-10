@@ -1,7 +1,8 @@
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Callable, override
+from typing import Callable
+from typing_extensions import override
 import threading
 import queue
 from uuid import uuid4
@@ -10,6 +11,7 @@ import shutil
 from .scheduler_types import Worker
 from manager.types import TaskData, TaskFile, TaskFileType
 import os
+from logger.stos_logger import get_logger
 
 
 class IScheduler(ABC):
@@ -49,11 +51,7 @@ class IScheduler(ABC):
 
 class Scheduler(IScheduler):
 
-    logging.basicConfig(
-        filename=os.environ.get("LOGS_PATH", "/home/stos/") + 'scheduler.log',
-        filemode='a',
-        encoding='utf-8'
-    )
+    __stos_logger: logging.Logger = get_logger("scheduler")
 
     __task_completion_callbacks: list[Callable[[TaskData, str], None]]
     __tasks_queue: queue.Queue[TaskData]
@@ -68,7 +66,7 @@ class Scheduler(IScheduler):
         self.__workers_delta = 0
         self.__lock = threading.Lock()
         self.init_workers(int(os.environ.get("NUMBER_OF_WORKERS", "3")))
-        logging.debug(f"Scheduler initialized successfully.\n\tNumber of workers: {self.__workers_queue.qsize()}")
+        self.__stos_logger.debug(f"Scheduler initialized successfully.\n\tNumber of workers: {self.__workers_queue.qsize()}")
 
     @override
     def init_workers(self, number_of_workers: int) -> None:
@@ -77,7 +75,7 @@ class Scheduler(IScheduler):
 
     @override
     def register_new_task(self, task_data: TaskData) -> None:
-        logging.debug(f"Registering task {task_data.task_id} in scheduler")
+        self.__stos_logger.debug(f"Registering task {task_data.task_id} in scheduler")
         self.__tasks_queue.put(task_data)
         self.manage_workers()
 
@@ -93,7 +91,7 @@ class Scheduler(IScheduler):
 
     @override
     def run_container(self, task_data: TaskData, worker: Worker) -> None:
-        logging.info(f"Started mock container for task {task_data.task_id}")
+        self.__stos_logger.info(f"Started mock container for task {task_data.task_id}")
         worker_dir = Path(f"./worker_files/{worker.worker_id}")
         worker_dir.parent.mkdir(exist_ok=True)
         if worker_dir.exists():
@@ -102,7 +100,7 @@ class Scheduler(IScheduler):
         for file in task_data.files:
             shutil.copy(file.disk_path, worker_dir / Path(file.disk_path).name)
         abs_path_to_files = str(worker_dir.resolve())
-        logging.debug(f"Prepared directory structure: {abs_path_to_files}")
+        self.__stos_logger.debug(f"Prepared directory structure: {abs_path_to_files}")
         _ = subprocess.run([
             "docker", "run", "--rm",
             "--name", f"worker_{worker.worker_id}",
@@ -110,7 +108,7 @@ class Scheduler(IScheduler):
             "-v", f"{abs_path_to_files}:/app/{worker_dir}", 
             "worker"
         ], check=True)
-        logging.info(f"Mock container for task {task_data.task_id} has completed work.")
+        self.__stos_logger.info(f"Mock container for task {task_data.task_id} has completed work.")
         result_data: TaskData = TaskData(task_data.task_id, [])
         output_dir = Path(f"./output/{task_data.task_id}")
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -118,7 +116,7 @@ class Scheduler(IScheduler):
             if file_path.is_file():
                 shutil.copy(file_path, output_dir / file_path.name)
                 result_data.files.append(TaskFile(str(uuid4()), str(worker_dir / file_path.name), TaskFileType.RESULT_FILE))
-        logging.debug("Files copied to output folder")
+        self.__stos_logger.debug("Files copied to output folder")
         for callback in self.__task_completion_callbacks:
             callback(result_data, output_dir)
         with self.__lock:
@@ -134,9 +132,9 @@ class Scheduler(IScheduler):
         while self.__workers_delta < 0 and not self.__workers_queue.empty():
             _ = self.__workers_queue.get()
             self.__workers_delta += 1
-        logging.debug(f"Workers number has changed. Previous: {previous_workers_number}, new: {self.__workers_delta}")
+        self.__stos_logger.debug(f"Workers number has changed. Previous: {previous_workers_number}, new: {self.__workers_delta}")
 
     @override 
     def register_task_completion_callback(self, callback: Callable[[TaskData, str], None]) -> None:
-        logging.debug("New task completion callback registered")
+        self.__stos_logger.debug("New task completion callback registered")
         self.__task_completion_callbacks.append(callback)

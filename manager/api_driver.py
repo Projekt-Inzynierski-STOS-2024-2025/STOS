@@ -1,10 +1,10 @@
 import logging
-import os
 from abc import ABC, abstractmethod
-from typing import override
+from typing_extensions import override
 import requests
 from manager.types import StosTaskResponse
-from os import environ 
+from os import environ
+from logger.stos_logger import get_logger
 
 
 class IApiDriver(ABC):
@@ -30,11 +30,7 @@ class IApiDriver(ABC):
 
 class STOSApiDriver(IApiDriver):
 
-    logging.basicConfig(
-        filename=os.environ.get("LOGS_PATH", "/home/stos/") + 'stos_api_driver.log',
-        filemode='a',
-        encoding='utf-8'
-    )
+    __stos_logger: logging.Logger = get_logger("stos_api_driver")
 
     __api_port: str = environ.get('STOS_PORT', '2137')
     __api_url: str = f"http://{environ.get('STOS_HOST', '127.0.0.1')}:{__api_port}"
@@ -45,7 +41,7 @@ class STOSApiDriver(IApiDriver):
         response = requests.get(STOSApiDriver.__api_url + '/tasks')
         response.raise_for_status()  # Raise an error for bad status codes
         parsed_response: StosTaskResponse = StosTaskResponse.from_json(response.text)
-        logging.debug(f"Successfully downloaded task {parsed_response.task_id}")
+        STOSApiDriver.__stos_logger.debug(f"Successfully downloaded task {parsed_response.task_id}")
         return parsed_response
 
     @staticmethod
@@ -53,7 +49,7 @@ class STOSApiDriver(IApiDriver):
     def download_file(id: str) -> str:
         response = requests.get(STOSApiDriver.__api_url + "/files/" + id)
         response.raise_for_status()
-        logging.debug(f"Successfully downloaded file {id}")
+        STOSApiDriver.__stos_logger.debug(f"Successfully downloaded file {id}")
         return response.text
 
     @staticmethod
@@ -61,4 +57,4 @@ class STOSApiDriver(IApiDriver):
     def upload_results(id: str) -> None:
         response = requests.post(STOSApiDriver.__api_url + '/tasks/' + id)
         response.raise_for_status()
-        logging.debug(f"Successfully uploaded result of task {id}")
+        STOSApiDriver.__stos_logger.debug(f"Successfully uploaded result of task {id}")
