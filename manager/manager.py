@@ -1,7 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Callable
-from typing_extensions import override
+from typing import Callable, override
 from time import sleep
 import os
 import shutil
@@ -9,7 +8,7 @@ from manager.api_driver import IApiDriver, STOSApiDriver
 from manager.cache_driver import ICacheDriver, SQliteCacheDriver
 from manager.storage_driver import IStorageDriver, LocalStorageDriver
 from manager.types import StosTaskResponse, TaskData
-from logger.stos_logger import get_logger
+from logger.stos_logger import STOSLogger
 
 
 class IManager(ABC):
@@ -29,7 +28,7 @@ class IManager(ABC):
 
 
 class Manager(IManager):
-    __stos_logger: logging.Logger = get_logger("manager")
+    __stos_logger: logging.Logger = STOSLogger("manager")
 
     # Configuration from env
     __request_timeout: int

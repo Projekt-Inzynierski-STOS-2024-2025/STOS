@@ -1,9 +1,9 @@
 import logging
 from abc import ABC, abstractmethod
 from os import environ
-from typing_extensions import override
+from typing import override
 import sqlite3 as sqlite
-from logger.stos_logger import get_logger
+from logger.stos_logger import STOSLogger
 from manager.types import TaskFile, TaskFileType
 
 
@@ -36,7 +36,7 @@ class ICacheDriver(ABC):
 
 class SQliteCacheDriver(ICacheDriver):
 
-    __stos_logger: logging.Logger = get_logger('sqlite_cache_driver')
+    __stos_logger: logging.Logger = STOSLogger('sqlite_cache_driver')
 
     # Do not access directly, please use __get_connection()
     __connection: sqlite.Connection | None = None

@@ -1,10 +1,10 @@
 import logging
 from abc import ABC, abstractmethod
-from typing_extensions import override
+from typing import override
 import requests
 from manager.types import StosTaskResponse
 from os import environ
-from logger.stos_logger import get_logger
+from logger.stos_logger import STOSLogger
 
 
 class IApiDriver(ABC):
@@ -30,7 +30,7 @@ class IApiDriver(ABC):
 
 class STOSApiDriver(IApiDriver):
 
-    __stos_logger: logging.Logger = get_logger("stos_api_driver")
+    __stos_logger: logging.Logger = STOSLogger("stos_api_driver")
 
     __api_port: str = environ.get('STOS_PORT', '2137')
     __api_url: str = f"http://{environ.get('STOS_HOST', '127.0.0.1')}:{__api_port}"

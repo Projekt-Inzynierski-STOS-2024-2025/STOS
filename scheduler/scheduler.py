@@ -1,8 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Callable
-from typing_extensions import override
+from typing import Callable, override
 import threading
 import queue
 from uuid import uuid4
@@ -11,7 +10,7 @@ import shutil
 from .scheduler_types import Worker
 from manager.types import TaskData, TaskFile, TaskFileType
 import os
-from logger.stos_logger import get_logger
+from logger.stos_logger import STOSLogger
 
 
 class IScheduler(ABC):
@@ -51,7 +50,7 @@ class IScheduler(ABC):
 
 class Scheduler(IScheduler):
 
-    __stos_logger: logging.Logger = get_logger("scheduler")
+    __stos_logger: logging.Logger = STOSLogger("scheduler")
 
     __task_completion_callbacks: list[Callable[[TaskData, str], None]]
     __tasks_queue: queue.Queue[TaskData]

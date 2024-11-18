@@ -1,8 +1,8 @@
 import logging
 from abc import ABC, abstractmethod
 import os
-from typing_extensions import override
-from logger.stos_logger import get_logger
+from typing import override
+from logger.stos_logger import STOSLogger
 
 
 class IStorageDriver(ABC):
@@ -22,7 +22,7 @@ class IStorageDriver(ABC):
 
 class LocalStorageDriver(IStorageDriver):
 
-    __stos_logger: logging.Logger = get_logger("local_storage_driver")
+    __stos_logger: logging.Logger = STOSLogger("local_storage_driver")
 
     # __SAVE_PATH = Path("./tmp/stos/")
     __SAVE_PATH = "D:\\STOS\\tmp\\"
