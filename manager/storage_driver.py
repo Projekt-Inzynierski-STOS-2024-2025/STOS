@@ -25,7 +25,7 @@ class LocalStorageDriver(IStorageDriver):
     __stos_logger: logging.Logger = STOSLogger("local_storage_driver")
 
     # __SAVE_PATH = Path("./tmp/stos/")
-    __SAVE_PATH = "D:\\STOS\\tmp\\"
+    __SAVE_PATH = "/tmp/stos/"
 
     @staticmethod
     @override
