@@ -3,6 +3,9 @@ current_dir=$(dirname "$(realpath "$0")")
 cd $current_dir
 root_dir=$(dirname "$current_dir")
 ns=$(which nix-shell)
+echo --- Updating nixpkgs
+nix-channel --add https://nixos.org/channels/nixpkgs-unstable
+nix-channel --update
 echo --- Running healthcheck.sh 
 /bin/bash healthcheck.sh
 if [ $? -ne 0 ]; then
@@ -16,7 +19,12 @@ if [ $? -ne 0 ]; then
     echo --- ERROR - testing.sh exited with a non-zero exit code, aborting
     exit 1
 fi
-echo --- Entering root environment 
+echo --- Checks successful, preparing for deployment
+echo ----- Stopping existing containers
+docker ps -a -q | xargs docker stop
+echo ------ Entering root environment 
+echo ------ Removing some nix directories which break the system for some reason
+sudo rm -rf /tmp/env-vars
 echo --- Generating stos startup script for systemd 
 sudo touch /usr/bin/stos-bootstrap
 sudo tee /usr/bin/stos-bootstrap > /dev/null << EOF
