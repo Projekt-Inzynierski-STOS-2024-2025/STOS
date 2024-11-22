@@ -24,6 +24,20 @@ class StosTaskResponse:
         res.files = data['file_ids']
         return res
 
+# STOS /sync response
+class StosRemoteTagResponse:
+    remote_tag: str
+
+    def __init__(self, remote_tag: str) -> None:
+        self.remote_tag = remote_tag
+
+    @staticmethod
+    def from_json(json_string: str) -> Self:
+        data = json.loads(json_string)
+        remote_tag: str = data['remote_tag']
+        res = StosRemoteTagResponse(remote_tag)
+        return res
+
 
 # Intra app communication
 
@@ -55,12 +69,8 @@ class TaskData:
     def __init__(self, task_id: str, files: list[TaskFile]) -> None:
         self.task_id = task_id
         self.files = files
-        
 
-class Worker:
-    status: str
-    worker_id: UUID
-
-    def __init__(self, status: str, worker_id: UUID) -> None:
-        self.status = status
-        self.worker_id = worker_id
+class WorkerCommands(Enum):
+    DEBUG_AND_COMPILE = "vc-debug main.zip"
+    OPTIMALIZE_AND_COMPILE = "vc-opt main.zip"
+    DEBUG_OPTIMALIZE_AND_COMPILE = "vc-both main.zip"
