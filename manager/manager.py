@@ -1,5 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Callable, override
 from time import sleep
 import os
@@ -17,9 +18,8 @@ class IManager(ABC):
     def listen(self) -> None:
         pass
 
-    # TODO - determine what data is passed
     @abstractmethod
-    def task_completion_callback(self, task_data: TaskData, output_path: str) -> None:
+    def task_completion_callback(self, task_data: TaskData, output_path: Path) -> None:
         pass
 
     @abstractmethod
@@ -41,7 +41,9 @@ class Manager(IManager):
     # Observer
     __new_task_callbacks: list[Callable[[TaskData], None]]
 
-    def __init__(self,
+    __remote_tag: str = ''
+
+    def __init__(self, 
                  api: type[IApiDriver] = STOSApiDriver,
                  cache: type[ICacheDriver] = SQliteCacheDriver,
                  storage: type[IStorageDriver] = LocalStorageDriver
@@ -66,15 +68,19 @@ class Manager(IManager):
         self.__new_task_callbacks.append(callback)
 
     @override
-    def task_completion_callback(self, task_data: TaskData, output_path: str) -> None:
+    def task_completion_callback(self, task_data: TaskData, output_path: Path) -> None:
         self.__stos_logger.info(f"Received task completion data for task {task_data.task_id}")
         self.__api_driver.upload_results(task_data.task_id)
-        shutil.rmtree(output_path)
+        try:
+            shutil.rmtree(output_path)
+        except:
+            self.__stos_logger.error(f"Error while deleting task {task_data.task_id} result directory")
 
     @override
     def listen(self) -> None:
         self.__stos_logger.info("Starting manager process")
         while True:
+            self.synchronize_filesdb()
             task_data = self._handle_task_download()
             self._notify_new_task(task_data)
             sleep(self.__request_timeout)
@@ -92,8 +98,8 @@ class Manager(IManager):
         missing = self.__cache_driver.check_files(files)
         for file in missing:
             self.__stos_logger.debug(f"Downloading missing {file} file to the cache")
-            content = self.__api_driver.download_file(file)
-            path = self.__storage_driver.save_file(file, content)
+            content, extension = self.__api_driver.download_file(file)
+            path = self.__storage_driver.save_file(file, content, extension)
             self.__cache_driver.add_entry(file, path)
 
     def _collect_task(self, stos_task: StosTaskResponse) -> TaskData:
@@ -101,10 +107,18 @@ class Manager(IManager):
         file_entries = [self.__cache_driver.get_entry(file) for file in stos_task.files]
         task_id = stos_task.task_id
         self.__stos_logger.debug(f"Task's {stos_task.task_id} file entries: " +
-                                 "\n".join([file.disk_path if file is not None else "<UNKNOWN FILE>" for file in file_entries]))
+                                "\n".join([file.disk_path if file is not None else "<UNKNOWN FILE>" for file in file_entries]))
         return TaskData(task_id, file_entries)
 
     def _notify_new_task(self, task: TaskData) -> None:
         self.__stos_logger.debug(f"Passing task {task.task_id} to the handlers")
         for callback in self.__new_task_callbacks:
             callback(task)
+
+    def synchronize_filesdb(self) -> None:
+        remote_tag = self.__api_driver.fetch_remote_tag()
+        if(not self.__remote_tag or remote_tag.remote_tag != self.__remote_tag):
+            self.__stos_logger.info(f"Remote tag not equal Local:{self.__remote_tag} - Remote:{remote_tag.remote_tag}, fetching files.db...")
+            self.__api_driver.fetch_filesdb_zip()
+            self.__stos_logger.info("Files db fetched")
+            self.__remote_tag = remote_tag.remote_tag

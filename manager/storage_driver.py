@@ -10,7 +10,7 @@ class IStorageDriver(ABC):
     # Save file with name id and return URL/PATH
     @staticmethod
     @abstractmethod
-    def save_file(id: str, content: str) -> str:
+    def save_file(id: str, content: str, extension: str) -> str:
         pass
 
     # Get contents of file under url. Returns None if file does not exist
@@ -18,7 +18,6 @@ class IStorageDriver(ABC):
     @abstractmethod
     def get_file(url: str) -> str | None:
         pass
-
 
 class LocalStorageDriver(IStorageDriver):
 
@@ -29,9 +28,9 @@ class LocalStorageDriver(IStorageDriver):
 
     @staticmethod
     @override
-    def save_file(id: str, content: str) -> str:
+    def save_file(id: str, content: str, extension: str) -> str:
         LocalStorageDriver.__ensure_dir_structure()
-        saved_path = str(LocalStorageDriver.__SAVE_PATH) + id
+        saved_path = str(LocalStorageDriver.__SAVE_PATH) + id + extension
         with open(saved_path, "w") as file:
             _ = file.write(content)
         return saved_path

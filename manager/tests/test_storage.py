@@ -5,10 +5,11 @@ from manager.storage_driver import LocalStorageDriver
 def test_save():
     id = "3"
     content = "Some text"
+    extension = ".cpp"
 
-    path = LocalStorageDriver.save_file(id, content)
+    path = LocalStorageDriver.save_file(id, content, extension)
 
-    assert path == f"/tmp/stos/{id}"
+    assert path == f"/tmp/stos/{id}.cpp"
     assert os.path.isfile(path)
 
     with open(path, 'r') as saved_file:
@@ -19,7 +20,9 @@ def test_save():
 def test_read():
     id = "4"
     content = "Some text to read"
-    path = f"/tmp/stos/{id}"
+    extension = ".cpp"
+
+    path = f"/tmp/stos/{id}.cpp"
 
     with open(path, 'w') as file:
         _ = file.write(content)
