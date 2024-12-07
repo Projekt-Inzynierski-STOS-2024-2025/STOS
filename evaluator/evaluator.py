@@ -1,23 +1,22 @@
 from abc import ABC, abstractmethod
 from typing import override
 
-from evaluator.executor import IExecutor
+from evaluator.executor import IExecutor, ExecutorType
 from grader import IGrader, GradingStrategy, GraderFactory
 from logger.stos_logger import ISTOSLogger, STOSLogger
-from executor_type import ExecutorType
 
 
 class IEvaluator(ABC):
 
-    # Evaluates result to the expected values and returns grade for each test, mapped with its id.
+    # Runs process of executable file evaluation based on expected result from given output
     @abstractmethod
     def evaluate_solution(self, executable_path: str, input_data_path: str, mode: ExecutorType,
-                          expected_output_file_path: str, grading_strategy: GradingStrategy) -> list[bool]:
+                          expected_output_file_path: str, grading_strategy: GradingStrategy) -> list[tuple[bool, str]]:
         pass
 
-    # Evaluates singular test and returns its grade
+    # Evaluates singular test and returns its grade and message
     @abstractmethod
-    def evaluate_singular(self, result: str, expected_result: str, grader: IGrader) -> bool:
+    def evaluate_singular(self, result: str, expected_result: str, grader: IGrader) -> (bool, str):
         pass
 
 
@@ -31,7 +30,7 @@ class Evaluator(IEvaluator):
 
     @override
     def evaluate_solution(self, executable_path: str, input_data_path: str, mode: ExecutorType,
-                          expected_output_file_path: str, grading_strategy: GradingStrategy) -> list[bool]:
+                          expected_output_file_path: str, grading_strategy: GradingStrategy) -> list[tuple[bool, str]]:
         self.__executor.run_executor(executable_path, input_data_path, mode)
         output: str = self.__executor.read_output()
         parsed_output: list[str] = self.__output_parser(output)
@@ -44,7 +43,7 @@ class Evaluator(IEvaluator):
         return results
 
     @override
-    def evaluate_singular(self, result: str, expected_result: str, grader: IGrader) -> bool:
+    def evaluate_singular(self, result: str, expected_result: str, grader: IGrader) -> (bool, str):
         split_output_values = result.split(",")
         output, execution_time = split_output_values[0], split_output_values[1]
         split_expected_output_values = expected_result.split(",")

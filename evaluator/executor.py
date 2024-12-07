@@ -1,5 +1,14 @@
 from abc import ABC, abstractmethod
-from executor_type import ExecutorType
+from enum import Enum
+
+
+class ExecutorType(Enum):
+    C = 0
+    CPP = 1
+    PYTHON = 2
+    SDL = 3
+    CONIO = 4
+    LUA = 5
 
 
 class IExecutor(ABC):
