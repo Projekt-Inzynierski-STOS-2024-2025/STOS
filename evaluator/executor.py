@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import override
+from logger.stos_logger import ISTOSLogger, STOSLogger
 
 
 class ExecutorType(Enum):
@@ -35,6 +36,7 @@ class ContainerBulkExecutor(IExecutor):
 
     # When implemented, change to environment variable
     __CONTAINER_PATH: str = "/path/in/container/"
+    __stos_logger: ISTOSLogger = STOSLogger("evaluator")
 
     @override
     def run_executable(self, executable_path: str, input_data_path: str, mode: ExecutorType) -> str:
