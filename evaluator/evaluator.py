@@ -31,7 +31,7 @@ class Evaluator(IEvaluator):
     @override
     def evaluate_solution(self, executable_path: str, input_data_path: str, mode: ExecutorType,
                           expected_output_file_path: str, grading_strategy: GradingStrategy) -> list[tuple[bool, str]]:
-        self.__executor.run_executor(executable_path, input_data_path, mode)
+        self.__executor.run_executable(executable_path, input_data_path, mode)
         output: str = self.__executor.read_output()
         parsed_output: list[str] = self.__output_parser(output)
         parsed_expected_output: list[str] = self.__expected_output_file_parser(expected_output_file_path)
