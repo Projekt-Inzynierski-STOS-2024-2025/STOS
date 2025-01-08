@@ -7,6 +7,8 @@ RUN dpkg --add-architecture i386 && \
     apt-get update && \
     apt-get install --no-install-recommends -y \
     mingw-w64 \
+    wine64 \
+    wine32 \
     wine \
     xvfb \
     dos2unix \
