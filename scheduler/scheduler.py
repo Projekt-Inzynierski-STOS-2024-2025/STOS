@@ -50,6 +50,8 @@ class Scheduler(IScheduler):
     __lock: threading.Lock
     __worker_cpu: str
     __worker_ram: str
+    __executor_cpu: str
+    __executor_ram: str
     __total_cpu: str
     __total_ram: str
 
@@ -60,6 +62,8 @@ class Scheduler(IScheduler):
         self.__lock = threading.Lock()
         self.__worker_cpu = os.environ.get("WORKER_CPU", "1")
         self.__worker_ram = os.environ.get("WORKER_RAM", "1Gi")
+        self.__executor_cpu = os.environ.get("EXECUTOR_CPU", "1")
+        self.__executor_ram = os.environ.get("EXECUTOR_RAM", "1Gi")
         self.__total_cpu = subprocess.check_output(["nproc"]).decode().strip()
         self.__total_ram = subprocess.check_output(["free -h | awk '/^Mem:/ {print $2}'"], shell=True).decode().strip()
         self.__workers_count = self.get_initial_workers_count()
@@ -89,11 +93,15 @@ class Scheduler(IScheduler):
 
     @override
     def process_task(self, task_data: TaskData, worker_id: str) -> None:
+        # Temporary directories for storing files for executor
+        OUTPUT_DIR = "output"
+        INPUT_DIR = "input"
         self.__stos_logger.info(f"process_task: Worker: {worker_id} started processing task: {task_data.task_id}")
         self.zip_and_copy_task_data_files_to_worker_src(task_data, worker_id)
         self.send_command_to_worker_input_pipe(worker_id, WorkerCommands.DEBUG_AND_COMPILE.value)
         self.watch_output_pipe(task_data, worker_id)
         result_path = self.copy_result(task_data, worker_id)
+        self.__run_executor(result_path, INPUT_DIR, OUTPUT_DIR)
         for callback in self.__task_completion_callbacks:
             callback(task_data, Path(result_path))
         self.__stos_logger.info(f"process_task: Worker: {worker_id} processed task: {task_data.task_id}")
@@ -173,7 +181,7 @@ class Scheduler(IScheduler):
         self.__stos_logger.info(f'create_worker_pipes_and_directories: Created pipes and directories for worker: {worker_id}')
 
     def run_worker(self, worker_id: str, timeout: int) -> None:
-        base_dir =  f"./worker_{worker_id}"
+        base_dir = f"./worker_{worker_id}"
         compilers_path = os.path.join(base_dir, "compilers")
         sdks_path = os.path.join(base_dir, "sdks")
         io_path = os.path.join(base_dir, "io")
@@ -234,3 +242,19 @@ class Scheduler(IScheduler):
                 self.__stos_logger.info(f"send_command_to_worker_input_pipe: Command sent to input pipe {input_pipe_path} for worker: {worker_id}")
         except Exception as e:
             self.__stos_logger.error(f"send_command_to_worker_input_pipe: Input pipe error: {e}")
+
+    def __run_executor(self, executable_path: str, input_files_path: str, output_path: str):
+        self.__stos_logger.info(f"run_executor: Running executor")
+        result = self.__run_executor_environment(executable_path, input_files_path, output_path)
+        self.__stos_logger.info(f"run_executor: Executor result: {result}")
+        for file in os.listdir(output_path):
+            file_path = os.path.join(output_path, file)
+            if os.path.isfile(file_path):
+                with open(file_path, 'r') as f:
+                    print(f.read())
+            os.remove(file_path)   # Temporary - it should be graded before deleting
+
+    def __run_executor_environment(self, executable_path: str, input_files_path: str, output_path: str):
+        return subprocess.run(
+            f"../wine_worker_container/runContainer.sh {executable_path} {input_files_path} {output_path}"
+        )
