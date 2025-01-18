@@ -7,4 +7,4 @@ fi
 
 SHARED_VOLUME_PATH=$1
 
-docker run --rm -v "$SHARED_VOLUME_PATH":/app/project worker
+docker run --rm -v "$SHARED_VOLUME_PATH":/app/project executor

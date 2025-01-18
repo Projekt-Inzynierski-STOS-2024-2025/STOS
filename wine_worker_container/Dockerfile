@@ -7,6 +7,8 @@ RUN dpkg --add-architecture i386 && \
     apt-get update && \
     apt-get install --no-install-recommends -y \
     mingw-w64 \
+    wine64 \
+    wine32 \
     wine \
     xvfb \
     dos2unix \
@@ -20,5 +22,7 @@ COPY ./build_and_run.sh /app/build_and_run.sh
 RUN dos2unix /app/build_and_run.sh
 
 RUN chmod +x /app/build_and_run.sh
+
+RUN wineboot --init > /dev/null 2>&1
 
 CMD ["/app/build_and_run.sh"]

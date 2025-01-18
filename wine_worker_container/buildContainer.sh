@@ -1,1 +1,1 @@
-docker build -t worker .
+docker build -t executor .
