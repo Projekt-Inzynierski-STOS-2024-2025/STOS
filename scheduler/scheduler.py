@@ -1,19 +1,18 @@
-import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Callable, override
 import threading
 import queue
-from uuid import uuid4
 import subprocess
 import shutil
 import zipfile
-from manager.types import TaskData, TaskFile, TaskFileType, WorkerCommands
+from manager.types import TaskData, WorkerCommands
 import os
-from logger.stos_logger import STOSLogger
+from logger.stos_logger import STOSLogger, ISTOSLogger
+
 
 class IScheduler(ABC):
-     
+
     # add task data to queue 
     @abstractmethod
     def register_new_task(self, task_data: TaskData) -> None:
@@ -31,7 +30,7 @@ class IScheduler(ABC):
 
     # start processing task inside worker docker container
     @abstractmethod
-    def process_task(self, taskData: TaskData, workerId: str) -> None:
+    def process_task(self, task_data: TaskData, worker_id: str) -> None:
         pass
 
     # register callback function that is run on task finish
@@ -42,7 +41,7 @@ class IScheduler(ABC):
 
 class Scheduler(IScheduler):
 
-    __stos_logger: logging.Logger = STOSLogger("scheduler")
+    __stos_logger: ISTOSLogger = STOSLogger("scheduler")
 
     __task_completion_callbacks: list[Callable[[TaskData, Path], None]]
     __tasks_queue: queue.Queue[TaskData]
@@ -51,6 +50,8 @@ class Scheduler(IScheduler):
     __lock: threading.Lock
     __worker_cpu: str
     __worker_ram: str
+    __executor_cpu: str
+    __executor_ram: str
     __total_cpu: str
     __total_ram: str
 
@@ -61,93 +62,91 @@ class Scheduler(IScheduler):
         self.__lock = threading.Lock()
         self.__worker_cpu = os.environ.get("WORKER_CPU", "1")
         self.__worker_ram = os.environ.get("WORKER_RAM", "1Gi")
-        self.__total_cpu = subprocess.check_output(["nproc"]).decode().strip() 
+        self.__executor_cpu = os.environ.get("EXECUTOR_CPU", "1")
+        self.__executor_ram = os.environ.get("EXECUTOR_RAM", "1Gi")
+        self.__total_cpu = subprocess.check_output(["nproc"]).decode().strip()
         self.__total_ram = subprocess.check_output(["free -h | awk '/^Mem:/ {print $2}'"], shell=True).decode().strip()
         self.__workers_count = self.get_initial_workers_count()
         self.initialize_workers()
 
-
     @override
     def initialize_workers(self) -> None:
-        for i in range (0, self.__workers_count):
+        for i in range(0, self.__workers_count):
             cid = str(i)
             self.create_worker_pipes_and_directories(cid)
             self.run_worker(cid, 10)
-            self.__workers_queue.put(cid)  
-
+            self.__workers_queue.put(cid)
 
     @override
     def register_new_task(self, task_data: TaskData) -> None:
         self.__tasks_queue.put(task_data)
         self.manage_workers()
 
-
     @override
     def manage_workers(self) -> None:
         with self.__lock:
             while not self.__workers_queue.empty() and not self.__tasks_queue.empty():
                 task = self.__tasks_queue.get()
-                workerId = self.__workers_queue.get()
-                thread = threading.Thread(target=self.process_task, args=(task, workerId))
+                worker_id = self.__workers_queue.get()
+                thread = threading.Thread(target=self.process_task, args=(task, worker_id))
                 thread.start()
 
-
     @override
-    def process_task(self, taskData: TaskData, workerId: str) -> None:
-        self.__stos_logger.info(f"process_task: Worker: {workerId} started processing task: {taskData.task_id}")
-        self.zip_and_copy_taskData_files_to_worker_src(taskData, workerId)
-        self.send_command_to_worker_input_pipe(workerId, WorkerCommands.DEBUG_AND_COMPILE.value)
-        self.watch_output_pipe(taskData, workerId)
-        result_path = self.copy_result(taskData, workerId)
+    def process_task(self, task_data: TaskData, worker_id: str) -> None:
+        # Temporary directories for storing files for executor
+        OUTPUT_DIR = "output"
+        INPUT_DIR = "input"
+        self.__stos_logger.info(f"process_task: Worker: {worker_id} started processing task: {task_data.task_id}")
+        self.zip_and_copy_task_data_files_to_worker_src(task_data, worker_id)
+        self.send_command_to_worker_input_pipe(worker_id, WorkerCommands.DEBUG_AND_COMPILE.value)
+        self.watch_output_pipe(task_data, worker_id)
+        result_path = self.copy_result(task_data, worker_id)
+        self.__run_executor(result_path, INPUT_DIR, OUTPUT_DIR)
         for callback in self.__task_completion_callbacks:
-            callback(taskData, Path(result_path))
-        self.__stos_logger.info(f"process_task: Worker: {workerId} processed task: {taskData.task_id}")
+            callback(task_data, Path(result_path))
+        self.__stos_logger.info(f"process_task: Worker: {worker_id} processed task: {task_data.task_id}")
         with self.__lock:
-            self.__workers_queue.put(workerId)
+            self.__workers_queue.put(worker_id)
         self.manage_workers()
 
-
-    @override 
+    @override
     def register_task_completion_callback(self, callback: Callable[[TaskData, Path], None]) -> None:
         self.__task_completion_callbacks.append(callback)
 
     ### HELPER METHODS ###
 
     # Wait for worker result and copy it to proper folder
-    def watch_output_pipe(self, taskData: TaskData, workerId: str):
-        path = f'./worker_{workerId}/io/output'
+    def watch_output_pipe(self, task_data: TaskData, worker_id: str):
+        path = f'./worker_{worker_id}/io/output'
         if not os.path.exists(path):
             self.__stos_logger.error(f"watch_output_pipe: Path {path} does not exist.")
             return
         fifo = os.open(path, os.O_RDONLY)
-        self.__stos_logger.info(f"watch_output_pipe: Waiting for task: {taskData.task_id} result from worker: {workerId}")
+        self.__stos_logger.info(f"watch_output_pipe: Waiting for task: {task_data.task_id} result from worker: {worker_id}")
         data = os.read(fifo, 1024 * 1024 * 1024)
-        self.__stos_logger.info(f"watch_output_pipe: Result: {data} for task: {taskData.task_id} from worker: {workerId}")
+        self.__stos_logger.info(f"watch_output_pipe: Result: {data} for task: {task_data.task_id} from worker: {worker_id}")
         os.close(fifo)
-    
 
     # Copy task result 
-    def copy_result(self, taskData: TaskData, workerId: str) -> str:
-        result_path = f'./worker_{workerId}/io/result'
-        dest_path = f"./results/{taskData.task_id}"
+    def copy_result(self, task_data: TaskData, worker_id: str) -> str:
+        result_path = f'./worker_{worker_id}/io/result'
+        dest_path = f"./results/{task_data.task_id}"
         os.makedirs(dest_path, exist_ok=True)
         if os.path.isdir(result_path):
-            shutil.copytree(result_path, dest_path, dirs_exist_ok=True) 
+            shutil.copytree(result_path, dest_path, dirs_exist_ok=True)
         else:
             shutil.copy2(result_path, dest_path)
-        self.__stos_logger.info(f"copy_result: Copied task {taskData.task_id} result")
+        self.__stos_logger.info(f"copy_result: Copied task {task_data.task_id} result")
         return dest_path
-        
 
-    #convert memory obtained from .env or awk to float number of gigabytes  
+    # Convert memory obtained from .env or awk to float number of gigabytes
     def convert_memory_to_gb(self, memory: str) -> float:
-        if  memory.lower().endswith('gi') or memory.lower().endswith("g"):
+        if memory.lower().endswith('gi') or memory.lower().endswith("g"):
             return float(memory[:-2])
         elif memory.lower().endswith('mi') or memory.lower().endswith("m"):
             return float(memory[:-2]) / 1024
         else:
             return float(memory)
-
 
     def create_worker_pipes_and_directories(self, worker_id: str) -> None:
         self.__stos_logger.info(f'create_worker_pipes_and_directories: Started pipes and directories initialization for worker: {worker_id}')
@@ -164,14 +163,14 @@ class Scheduler(IScheduler):
         output_pipe = os.path.join(io_dir, "output")
         directories = [base_path, work_dir, fails_dir, io_dir, src_dir, result_dir, compilers_dir, control_dir, sdks_dir]
         for directory in directories:
-            os.makedirs(directory, exist_ok=True) 
+            os.makedirs(directory, exist_ok=True)
         for src, dest in [("./compilers", compilers_dir), ("./sdks", sdks_dir), ("./control", control_dir)]:
             if os.path.exists(src):
                 for item in os.listdir(src):
                     s = os.path.join(src, item)
                     d = os.path.join(dest, item)
                     if os.path.isdir(s):
-                        shutil.copytree(s, d, dirs_exist_ok=True) 
+                        shutil.copytree(s, d, dirs_exist_ok=True)
                     else:
                         shutil.copy2(s, d)
         for pipe in [input_pipe, output_pipe]:
@@ -181,15 +180,14 @@ class Scheduler(IScheduler):
                 pass
         self.__stos_logger.info(f'create_worker_pipes_and_directories: Created pipes and directories for worker: {worker_id}')
 
-
     def run_worker(self, worker_id: str, timeout: int) -> None:
-        base_dir =  f"./worker_{worker_id}"
+        base_dir = f"./worker_{worker_id}"
         compilers_path = os.path.join(base_dir, "compilers")
         sdks_path = os.path.join(base_dir, "sdks")
         io_path = os.path.join(base_dir, "io")
         work_path = os.path.join(base_dir, "work")
-        control_path = os.path.join(base_dir, "control") 
-        
+        control_path = os.path.join(base_dir, "control")
+
         docker_command = [
             "docker", "run",
             "-d",
@@ -215,35 +213,48 @@ class Scheduler(IScheduler):
         )
         self.__stos_logger.info(f"run_worker: Worker {worker_id} started")
 
-
     # get worker count based on available resources
     def get_initial_workers_count(self) -> int:
         ram_workers = int(self.convert_memory_to_gb(self.__total_ram) / self.convert_memory_to_gb(self.__worker_ram))
         cpu_workers = int(float(self.__total_cpu) / float(self.__worker_cpu)) - 2
         return min(ram_workers, cpu_workers)
 
-
-    # copies all files from taskData to 
-    def zip_and_copy_taskData_files_to_worker_src(self, taskData: TaskData, workerId: str) -> None:
-        worker_src_path = f'./worker_{workerId}/io/src'
+    # copies all files from task_data to
+    def zip_and_copy_task_data_files_to_worker_src(self, task_data: TaskData, worker_id: str) -> None:
+        worker_src_path = f'./worker_{worker_id}/io/src'
         zip_file_path = os.path.join(worker_src_path, "main.zip")
         with zipfile.ZipFile(zip_file_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for task_file in taskData.files:
+            for task_file in task_data.files:
                 file_path = task_file.disk_path
                 if os.path.exists(file_path):
                     zipf.write(file_path, os.path.basename(file_path))
                 else:
-                    self.__stos_logger.info(f"zip_and_copy_taskData_files_to_worker_src: File {task_file.file_id} does not exist {task_file.disk_path} and was skipped")
+                    self.__stos_logger.info(f"zip_and_copy_task_data_files_to_worker_src: File {task_file.file_id} does not exist {task_file.disk_path} and was skipped")
 
-
-    def send_command_to_worker_input_pipe(self, workerId: str, input_command: str):
-        input_pipe_path = f'./worker_{workerId}/io/input'
+    def send_command_to_worker_input_pipe(self, worker_id: str, input_command: str):
+        input_pipe_path = f'./worker_{worker_id}/io/input'
         if not os.path.exists(input_pipe_path):
             self.__stos_logger.info(f"send_command_to_worker_input_pipe: Input pipe {input_pipe_path} does not exist.")
             return
         try:
             with os.fdopen(os.open(input_pipe_path, os.O_WRONLY), 'wb') as fifo:
                 _ = fifo.write(input_command.encode("UTF-8"))
-                self.__stos_logger.info(f"send_command_to_worker_input_pipe: Command sent to input pipe {input_pipe_path} for worker: {workerId}")
+                self.__stos_logger.info(f"send_command_to_worker_input_pipe: Command sent to input pipe {input_pipe_path} for worker: {worker_id}")
         except Exception as e:
             self.__stos_logger.error(f"send_command_to_worker_input_pipe: Input pipe error: {e}")
+
+    def __run_executor(self, executable_path: str, input_files_path: str, output_path: str):
+        self.__stos_logger.info(f"run_executor: Running executor")
+        result = self.__run_executor_environment(executable_path, input_files_path, output_path)
+        self.__stos_logger.info(f"run_executor: Executor result: {result}")
+        for file in os.listdir(output_path):
+            file_path = os.path.join(output_path, file)
+            if os.path.isfile(file_path):
+                with open(file_path, 'r') as f:
+                    print(f.read())
+            os.remove(file_path)   # Temporary - it should be graded before deleting
+
+    def __run_executor_environment(self, executable_path: str, input_files_path: str, output_path: str):
+        return subprocess.run(
+            f"../wine_worker_container/runContainer.sh {executable_path} {input_files_path} {output_path}"
+        )

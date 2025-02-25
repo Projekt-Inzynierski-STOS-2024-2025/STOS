@@ -177,3 +177,16 @@ worker_files
 
 #filebeat stuff
 data
+
+# STOS worker related files
+compilers/
+control/
+results/
+sdks/
+work/
+worker_*
+input/
+source/
+
+# Files used for E2E tests
+*/files_db.zip
